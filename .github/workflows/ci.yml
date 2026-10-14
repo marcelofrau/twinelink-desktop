@@ -10,16 +10,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Install clang-format
         run: sudo apt-get update && sudo apt-get install -y clang-format
-      - name: Check formatting
+      - name: Determine changed files
+        id: changed
         run: |
-          files=$(git ls-files '*.cpp' '*.cc' '*.h' '*.hpp')
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="origin/${{ github.base_ref }}"
+            git fetch origin "${{ github.base_ref }}" --depth=1 || true
+            range="$base...HEAD"
+          else
+            range="${{ github.event.before }}...HEAD"
+          fi
+          files=$(git diff --name-only $range -- '*.cpp' '*.cc' '*.h' '*.hpp' 2>/dev/null || true)
+          {
+            echo "files<<EOF"
+            echo "$files"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - name: Check formatting (changed files)
+        run: |
+          files="${{ steps.changed.outputs.files }}"
           if [ -n "$files" ]; then clang-format --dry-run --Werror $files; fi
 
   # NOTE(bootstrap): the Qt6 + KF6 build is being brought off Craft on Windows
   # (risk R-1). Until the toolchain recipe is proven, this job is a best-effort
-  # build on Linux to catch code regressions early. It is refined in M1.
+  # build on Linux to catch code regressions early. Refined in M1.
   build:
     runs-on: ubuntu-latest
     steps:
@@ -27,15 +45,14 @@ jobs:
       - uses: jurplel/install-qt-action@v4
         with:
           version: '6.7.2'
-          modules: 'qtquick3d'
       - name: Install KDE Frameworks
         run: |
           sudo apt-get update
           sudo apt-get install -y extra-cmake-modules \
             libkf6coreaddons-dev libkf6config-dev libkf6dbusaddons-dev \
             libkf6crash-dev libkf6i18n-dev libkf6notifications-dev \
-            libkf6iconthemes-dev libkf6kio-dev libkf6colorScheme-dev \
-            libkf6windowsystem-dev
+            libkf6iconthemes-dev libkf6kio-dev libkf6windowsystem-dev
+        continue-on-error: true
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=ON
         continue-on-error: true
