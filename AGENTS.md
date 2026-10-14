@@ -1,6 +1,6 @@
 # AGENTS.md - twinelink-desktop
 
-The Twine desktop client - a hard fork of KDE Connect (`kdeconnect-kde`).
+The twinelink desktop client - a hard fork of KDE Connect (`kdeconnect-kde`).
 Windows-first. Stack: C++20, Qt 6, a minimal set of KDE Frameworks 6,
 CMake + Ninja (built off Craft on Windows).
 The core is UI-agnostic and exposed via DBus; the UI is Qt Quick
@@ -11,15 +11,20 @@ The core is UI-agnostic and exposed via DBus; the UI is Qt Quick
 upstream merge requests (KDE forbids AI-engineered MRs). Pull security fixes
 manually.
 
-## Build & test
-- Configure: `cmake -S . -B build -G Ninja` (dependencies via vcpkg/Craft).
-- Build: `cmake --build build`.
-- Format: `clang-format`. Static analysis: `clang-tidy`, `cppcheck`.
-- Tests: `ctest` (Qt Test).
+## Build & test (Windows)
+Full recipe in `docs/development/build-desktop.md` (docs repo). Quick start:
+```
+. C:\CraftRoot\craft\craftenv.ps1
+cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=C:\CraftRoot -DCMAKE_BUILD_TYPE=RelWithDebInfo
+cmake --build build
+ctest --test-dir build
+```
+Binaries land in `build/bin`. Format: `clang-format`. Static analysis: `clang-tidy`, `cppcheck`.
 
 ## Continuity
 See `twinelink-docs/docs/plan/session-log.md`.
-## Working rules (all Twine repositories)
+
+## Working rules (all twinelink repositories)
 - Everything committed is in English (docs, code, comments, commits, PRs).
   The maintainer chats in Portuguese and uses a terse, compressed style.
 - OpenSpec-first: every feature/fix is an OpenSpec change (proposal, specs,
