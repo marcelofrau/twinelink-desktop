@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install clang-format
+        run: sudo apt-get update && sudo apt-get install -y clang-format
+      - name: Check formatting
+        run: |
+          files=$(git ls-files '*.cpp' '*.cc' '*.h' '*.hpp')
+          if [ -n "$files" ]; then clang-format --dry-run --Werror $files; fi
+
+  # NOTE(bootstrap): the Qt6 + KF6 build is being brought off Craft on Windows
+  # (risk R-1). Until the toolchain recipe is proven, this job is a best-effort
+  # build on Linux to catch code regressions early. It is refined in M1.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.7.2'
+          modules: 'qtquick3d'
+      - name: Install KDE Frameworks
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y extra-cmake-modules \
+            libkf6coreaddons-dev libkf6config-dev libkf6dbusaddons-dev \
+            libkf6crash-dev libkf6i18n-dev libkf6notifications-dev \
+            libkf6iconthemes-dev libkf6kio-dev libkf6colorScheme-dev \
+            libkf6windowsystem-dev
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=ON
+        continue-on-error: true
+      - name: Build
+        run: cmake --build build --parallel
+        continue-on-error: true

@@ -35,3 +35,8 @@ CMakeLists.txt.user
 /cmake-build*
 app/resources.generated.qrc
 smsapp/resources.generated.qrc
+
+# Twine: keep project CI and format config
+!.github/workflows/
+!.github/workflows/ci.yml
+!.clang-format
