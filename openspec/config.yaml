@@ -1,0 +1,26 @@
+schema: spec-driven
+
+context: |
+  Project: Twine (twinelink) - an open-source cross-device link, a hard fork of
+  KDE Connect. Windows-first. Features: remote desktop (RDP), Wake-on-LAN,
+  clipboard, file transfer, notifications, a modern UX.
+  Repo: twinelink-desktop (the desktop client).
+  Stack: C++20, Qt 6, a minimal set of KDE Frameworks 6, CMake + Ninja (built
+  off Craft on Windows).
+  Architecture: the core is UI-agnostic and exposed via DBus; the UI is Qt Quick
+  (no Kirigami/Plasma). Protocol identifiers stay kdeconnect.* for interop.
+  Standards: SOLID; see the project documentation for conventions.
+  Everything committed is in English.
+  Docs, requirements and roadmap: https://github.com/marcelofrau/twinelink-docs
+  Every feature or fix is an OpenSpec change (proposal, specs, design, tasks).
+  Testing: unit tests required for new logic; clang-format, clang-tidy and
+  cppcheck run in CI.
+
+rules:
+  proposal:
+    - Keep proposals focused; state FR-/NFR- requirement IDs when applicable.
+  design:
+    - Record alternatives considered and the reason for the chosen approach.
+    - No performance claim without a measurement method.
+  tasks:
+    - Break work into verifiable chunks; verify on real Windows hardware.
