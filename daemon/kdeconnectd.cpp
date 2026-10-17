@@ -28,6 +28,7 @@
 #include "desktop_daemon.h"
 #include "kdeconnect-version.h"
 #include <core/processhelper.h>
+#include <core/startuptrace.h>
 
 // Copied from plasma-workspace/libkworkspace/kworkspace.cpp
 static void detectPlatform(int argc, char **argv)
@@ -54,6 +55,8 @@ static void detectPlatform(int argc, char **argv)
 
 int main(int argc, char *argv[])
 {
+    StartupTrace::mark("daemon: main() entered");
+
 #ifdef Q_OS_WIN
     // If ran from a console, redirect the output there
     if (AttachConsole(ATTACH_PARENT_PROCESS)) {
@@ -71,7 +74,10 @@ int main(int argc, char *argv[])
     // Don't have Solid backend talk to ourself.
     qputenv("SOLID_DISABLE_KDECONNECT", "1");
 
+    StartupTrace::mark("daemon: Qt attributes set, constructing QApplication");
     QApplication app(argc, argv);
+    StartupTrace::mark("daemon: QApplication constructed");
+
     KAboutData aboutData(QStringLiteral("kdeconnect.daemon"),
                          i18n("KDE Connect Daemon"),
                          QStringLiteral(KDECONNECT_VERSION_STRING),
@@ -85,12 +91,14 @@ int main(int argc, char *argv[])
     // Ensure we have a suitable color theme set for light/dark mode. KColorSchemeManager implicitly applies
     // a suitable default theme.
     KColorSchemeManager::instance();
+    StartupTrace::mark("daemon: color scheme manager initialized");
     // Force breeze style to ensure coloring works consistently in dark mode. Specifically tab colors have
     // troubles on windows.
     QApplication::setStyle(QStringLiteral("breeze"));
     // Force breeze icon theme to ensure we can correctly adapt icons to color changes WRT dark/light mode.
     // Without this we may end up with hicolor and fail to support icon recoloring.
     QIcon::setThemeName(QStringLiteral("breeze"));
+    StartupTrace::mark("daemon: breeze style and icon theme applied");
 #else
     QIcon::setFallbackThemeName(QStringLiteral("breeze"));
 #endif
@@ -99,6 +107,7 @@ int main(int argc, char *argv[])
     if (qEnvironmentVariableIsEmpty("QT_QUICK_CONTROLS_STYLE")) {
         QQuickStyle::setStyle(QStringLiteral("org.kde.desktop"));
     }
+    StartupTrace::mark("daemon: quick controls style set");
 
     KCrash::initialize();
 
@@ -110,19 +119,24 @@ int main(int argc, char *argv[])
     parser.process(app);
 
     aboutData.processCommandLine(&parser);
+    StartupTrace::mark("daemon: command line parsed");
 
     KDBusService::StartupOptions flags = KDBusService::Unique;
     if (parser.isSet(replaceOption)) {
         flags |= KDBusService::Replace;
     }
     KDBusService dbusService(flags);
+    StartupTrace::mark("daemon: KDBusService acquired");
 
     DesktopDaemon daemon;
+    StartupTrace::mark("daemon: DesktopDaemon constructed");
 
 #ifdef Q_OS_WIN
     // make sure indicator shows up in the tray whenever daemon is spawned
     ProcessHelper::startDetached(QStringLiteral("kdeconnect-indicator.exe"));
+    StartupTrace::mark("daemon: indicator spawn requested");
 #endif
 
+    StartupTrace::mark("daemon: entering event loop");
     return app.exec();
 }

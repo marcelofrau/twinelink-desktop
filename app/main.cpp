@@ -6,12 +6,16 @@
 
 #include <QApplication>
 #include <QCommandLineParser>
+#include <QEvent>
 #include <QIcon>
 #include <QProcess>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
+#include <QQuickWindow>
 #include <QStandardPaths>
 #include <QWindow>
+
+#include <memory>
 
 #include "kdeconnect-version.h"
 #include <KAboutData>
@@ -22,9 +26,77 @@
 #include <KLocalizedString>
 #include <KWindowSystem>
 
+#include <core/startuptrace.h>
+
 #if defined(Q_OS_MAC)
 #include "macosforegroundapp.h"
 #endif
+
+namespace {
+/**
+ * Reports the first input the process handles: the second user-visible
+ * milestone of the UI process, after the first frame.
+ */
+class FirstInputFilter : public QObject
+{
+public:
+    using QObject::QObject;
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override
+    {
+        if (m_armed) {
+            switch (event->type()) {
+            case QEvent::MouseButtonPress:
+            case QEvent::KeyPress:
+            case QEvent::TouchBegin:
+                m_armed = false;
+                StartupTrace::mark("app: first input handled");
+                break;
+            default:
+                break;
+            }
+        }
+        return QObject::eventFilter(watched, event);
+    }
+
+private:
+    bool m_armed = true;
+};
+
+/**
+ * Instruments the window the user actually waits for. frameSwapped() is emitted
+ * while presenting, so the mark is queued onto the GUI thread; the guard keeps
+ * it to a single mark even when several frames are already queued by the time
+ * the handler first runs.
+ */
+void instrumentFirstFrame(QWindow *window)
+{
+    auto *quickWindow = qobject_cast<QQuickWindow *>(window);
+    if (!quickWindow) {
+        return;
+    }
+
+    auto reported = std::make_shared<bool>(false);
+    QObject::connect(
+        quickWindow,
+        &QQuickWindow::frameSwapped,
+        quickWindow,
+        [reported]() {
+            if (*reported) {
+                return;
+            }
+            *reported = true;
+            StartupTrace::mark("app: first frame presented");
+        },
+        Qt::QueuedConnection);
+}
+
+void instrumentFirstInput()
+{
+    qApp->installEventFilter(new FirstInputFilter(qApp));
+}
+}
 
 static void raiseWindow(QWindow *window)
 {
@@ -38,7 +110,11 @@ static void raiseWindow(QWindow *window)
 
 int main(int argc, char *argv[])
 {
+    StartupTrace::mark("app: main() entered");
+
     QApplication app(argc, argv);
+    StartupTrace::mark("app: QApplication constructed");
+
     KLocalizedString::setApplicationDomain("kdeconnect-app");
     app.setWindowIcon(QIcon::fromTheme(QStringLiteral("kdeconnect")));
     KAboutData aboutData(QStringLiteral("kdeconnect.app"),
@@ -53,6 +129,7 @@ int main(int argc, char *argv[])
     aboutData.setBugAddress("https://bugs.kde.org/enter_bug.cgi?product=kdeconnect&component=common");
     aboutData.setProgramLogo(QIcon::fromTheme(QStringLiteral("kdeconnect")));
     KAboutData::setApplicationData(aboutData);
+    StartupTrace::mark("app: application metadata set (icons resolved from theme)");
 
     KCrash::initialize();
 
@@ -60,12 +137,14 @@ int main(int argc, char *argv[])
     // Ensure we have a suitable color theme set for light/dark mode. KColorSchemeManager implicitly applies
     // a suitable default theme.
     KColorSchemeManager::instance();
+    StartupTrace::mark("app: color scheme manager initialized");
     // Force breeze style to ensure coloring works consistently in dark mode. Specifically tab colors have
     // troubles on windows.
     QApplication::setStyle(QStringLiteral("breeze"));
     // Force breeze icon theme to ensure we can correctly adapt icons to color changes WRT dark/light mode.
     // Without this we may end up with hicolor and fail to support icon recoloring.
     QIcon::setThemeName(QStringLiteral("breeze"));
+    StartupTrace::mark("app: breeze style and icon theme applied");
 #else
     QIcon::setFallbackThemeName(QStringLiteral("breeze"));
 #endif
@@ -74,6 +153,7 @@ int main(int argc, char *argv[])
     if (qEnvironmentVariableIsEmpty("QT_QUICK_CONTROLS_STYLE")) {
         QQuickStyle::setStyle(QStringLiteral("org.kde.desktop"));
     }
+    StartupTrace::mark("app: quick controls style set");
 
     QString device;
     QString config;
@@ -112,21 +192,28 @@ int main(int argc, char *argv[])
             config = parser.value(configOption);
         }
     }
+    StartupTrace::mark("app: command line parsed");
 
     KDBusService::StartupOptions flags = KDBusService::Unique;
     if (replace) {
         flags |= KDBusService::Replace;
     }
     KDBusService dbusService(flags);
+    StartupTrace::mark("app: KDBusService acquired");
+
     QQmlApplicationEngine engine;
     KLocalization::setupLocalizedContext(&engine);
     engine.loadFromModule("org.kde.kdeconnect.app", "Main");
+    StartupTrace::mark("app: QML module loaded");
 
     if (engine.rootObjects().isEmpty()) {
         qWarning() << "Failed to load the app" << engine.hasError();
         return 1;
     }
     auto obj = qobject_cast<QWindow *>(engine.rootObjects().constFirst());
+    instrumentFirstFrame(obj);
+    instrumentFirstInput();
+
     if (!device.isEmpty()) {
         auto mo = obj->metaObject();
         mo->invokeMethod(obj, "openDevice", Qt::QueuedConnection, Q_ARG(QVariant, device), Q_ARG(QVariant, config));
@@ -135,5 +222,6 @@ int main(int argc, char *argv[])
     QObject::connect(&dbusService, &KDBusService::activateRequested, obj, [obj](const QStringList & /*arguments*/, const QString & /*workingDirectory*/) {
         raiseWindow(obj);
     });
+    StartupTrace::mark("app: entering event loop");
     return app.exec();
 }

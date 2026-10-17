@@ -37,6 +37,7 @@ target_sources(kdeconnectcore PRIVATE
     core_debug.cpp
     notificationserverinfo.cpp
     openconfig.cpp
+    startuptrace.cpp
 )
 ecm_qt_declare_logging_category(kdeconnectcore
     HEADER kdeconnect_debug.h

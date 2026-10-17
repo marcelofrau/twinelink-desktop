@@ -20,11 +20,13 @@
 #include "core/backends/pairinghandler.h"
 #include "core/device.h"
 #include "core/openconfig.h"
+#include "core/startuptrace.h"
 
 DesktopDaemon::DesktopDaemon(QObject *parent)
     : Daemon(parent)
 {
     qApp->setWindowIcon(QIcon::fromTheme(QStringLiteral("kdeconnect")));
+    StartupTrace::mark("daemon: window icon resolved (QIcon::fromTheme)");
 }
 
 void DesktopDaemon::askPairingConfirmation(Device *device)

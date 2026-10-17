@@ -17,6 +17,7 @@
 #include "kdeconnectconfig.h"
 #include "networkpacket.h"
 #include "notificationserverinfo.h"
+#include "startuptrace.h"
 
 #ifdef KDECONNECT_BLUETOOTH
 #include "backends/bluetooth/bluetoothlinkprovider.h"
@@ -60,6 +61,7 @@ Daemon::Daemon(QObject *parent, bool testMode)
 
 void Daemon::init()
 {
+    StartupTrace::mark("daemon: Daemon::init() entered");
     qCDebug(KDECONNECT_CORE) << "Daemon starting";
 
     // Register on DBus
@@ -71,6 +73,7 @@ void Daemon::init()
     QDBusConnection::sessionBus().registerService(QStringLiteral("org.kde.kdeconnect"));
     QDBusConnection::sessionBus().registerObject(QStringLiteral("/modules/kdeconnect"), this, QDBusConnection::ExportScriptableContents);
 
+    StartupTrace::mark("daemon: DBus service registered (org.kde.kdeconnect)");
     qCDebug(KDECONNECT_CORE) << "DBus registration complete";
 
     auto configInstance = KdeConnectConfig::instance();
@@ -95,6 +98,7 @@ void Daemon::init()
     }
     Q_EMIT linkProvidersChanged(linkProviders());
 
+    StartupTrace::mark("daemon: link providers constructed");
     qCDebug(KDECONNECT_CORE) << "Backends loaded";
 
     // Read remembered paired devices
@@ -110,6 +114,7 @@ void Daemon::init()
         }
     }
 
+    StartupTrace::mark("daemon: paired devices loaded");
     qCDebug(KDECONNECT_CORE) << "Paired devices added";
 
     // Listen to new devices
@@ -118,10 +123,12 @@ void Daemon::init()
         a->onStart();
     }
 
+    StartupTrace::mark("daemon: link providers started (discovery active)");
     qCDebug(KDECONNECT_CORE) << "Link providers started";
 
     NotificationServerInfo::instance().init();
 
+    StartupTrace::mark("daemon: Daemon::init() completed (notifications ready)");
     qCDebug(KDECONNECT_CORE) << "Daemon start completed";
 }
 

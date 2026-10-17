@@ -1,8 +1,11 @@
 ## 1. Measurement harness
 
-- [ ] 1.1 Add per-line timestamped startup logging to the daemon
-- [ ] 1.2 Add the same to the UI process (first frame, first input)
+- [x] 1.1 Add per-line timestamped startup logging to the daemon
+- [x] 1.2 Add the same to the UI process (first frame, first input)
 - [ ] 1.3 Record baseline cold/warm numbers on real Windows hardware
+      - warm numbers recorded on the dev machine (see
+        `docs/architecture/startup-performance.md`); cold numbers pending the
+        release machine, together with 7.1
 
 ## 2. Cheap wins
 

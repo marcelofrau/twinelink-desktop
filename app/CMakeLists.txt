@@ -24,6 +24,12 @@ add_executable(kdeconnect-app
     ${kdeconnect_custom_icons_SRCS}
 )
 
+# The UI process deliberately does not link kdeconnectcore, so it gets its own
+# copy of the startup trace instead of pulling the whole core (and KIO) in.
+target_sources(kdeconnect-app PRIVATE ${CMAKE_SOURCE_DIR}/core/startuptrace.cpp)
+target_compile_definitions(kdeconnect-app PRIVATE KDECONNECT_STARTUPTRACE_STATIC=1)
+target_include_directories(kdeconnect-app PRIVATE ${CMAKE_SOURCE_DIR})
+
 if (APPLE)
     target_sources(kdeconnect-app PRIVATE macosforegroundapp.mm)
 endif()

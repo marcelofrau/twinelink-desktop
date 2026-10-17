@@ -33,6 +33,8 @@
 #include "models/devicesmodel.h"
 #include "models/devicessortproxymodel.h"
 
+#include <core/startuptrace.h>
+
 #include <dbushelper.h>
 
 #include "indicatorhelper.h"
@@ -40,6 +42,8 @@
 
 int main(int argc, char **argv)
 {
+    StartupTrace::mark("indicator: main() entered");
+
 #ifdef Q_OS_WIN
     // If ran from a console, redirect the output there
     if (AttachConsole(ATTACH_PARENT_PROCESS)) {
@@ -49,9 +53,11 @@ int main(int argc, char **argv)
 #endif
 
     QApplication app(argc, argv);
+    StartupTrace::mark("indicator: QApplication constructed");
 
     IndicatorHelper helper;
     helper.startDaemon();
+    StartupTrace::mark("indicator: daemon spawn requested");
 
     KAboutData aboutData(QStringLiteral("kdeconnect-indicator"),
                          i18n("KDE Connect Indicator"),
@@ -68,12 +74,14 @@ int main(int argc, char **argv)
     // Ensure we have a suitable color theme set for light/dark mode. KColorSchemeManager implicitly applies
     // a suitable default theme.
     KColorSchemeManager::instance();
+    StartupTrace::mark("indicator: color scheme manager initialized");
     // Force breeze style to ensure coloring works consistently in dark mode. Specifically tab colors have
     // troubles on windows.
     QApplication::setStyle(QStringLiteral("breeze"));
     // Force breeze icon theme to ensure we can correctly adapt icons to color changes WRT dark/light mode.
     // Without this we may end up with hicolor and fail to support icon recoloring.
     QIcon::setThemeName(QStringLiteral("breeze"));
+    StartupTrace::mark("indicator: breeze style and icon theme applied");
 #else
     QIcon::setFallbackThemeName(QStringLiteral("breeze"));
 #endif
@@ -82,10 +90,12 @@ int main(int argc, char **argv)
     if (qEnvironmentVariableIsEmpty("QT_QUICK_CONTROLS_STYLE")) {
         QQuickStyle::setStyle(QStringLiteral("org.kde.desktop"));
     }
+    StartupTrace::mark("indicator: quick controls style set");
 
     KCrash::initialize();
 
     KDBusService dbusService(KDBusService::Unique);
+    StartupTrace::mark("indicator: KDBusService acquired");
 
     DevicesModel model;
     model.setDisplayFilter(DevicesModel::Reachable | DevicesModel::Paired);
@@ -94,6 +104,7 @@ int main(int argc, char **argv)
     QMenu *menu = new QMenu;
 
     DaemonDbusInterface iface;
+    StartupTrace::mark("indicator: device model constructed");
 
     auto refreshMenu = [&iface, &proxyModel, &menu]() {
         menu->clear();
@@ -183,10 +194,13 @@ int main(int argc, char **argv)
 
     systray.setContextMenu(menu);
 #endif
+    StartupTrace::mark("indicator: tray icon visible");
 
     refreshMenu();
+    StartupTrace::mark("indicator: tray menu built");
 
     app.setQuitOnLastWindowClosed(false);
 
+    StartupTrace::mark("indicator: entering event loop");
     return app.exec();
 }

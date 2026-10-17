@@ -22,6 +22,9 @@ ecm_add_test(pluginloadtest.cpp LINK_LIBRARIES ${kdeconnect_libraries})
 ecm_add_test(sendfiletest.cpp LINK_LIBRARIES ${kdeconnect_libraries})
 target_sources(sendfiletest PRIVATE testdevice.cpp)
 ecm_add_test(smshelpertest.cpp LINK_LIBRARIES ${kdeconnect_libraries})
+# Deliberately not in ${kdeconnect_libraries}: the startup trace lives in
+# kdeconnectcore and must not drag KIO or notifications into the test.
+ecm_add_test(startuptracetest.cpp LINK_LIBRARIES kdeconnectcore Qt::Test)
 if (WIN32 OR APPLE)
     ecm_add_test(mdnstest.cpp LINK_LIBRARIES ${kdeconnect_libraries})
 endif()
