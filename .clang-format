@@ -1,7 +1,10 @@
 ---
 Language: Cpp
 BasedOnStyle: WebKit
-ColumnLimit: 100
+# The fork keeps upstream's formatting: no column limit and right-aligned
+# pointers. Enforcing a limit here would reformat whole upstream files on
+# first touch and make manual pulls of upstream security fixes painful.
+ColumnLimit: 0
 IndentWidth: 4
 TabWidth: 4
 UseTab: Never
@@ -16,9 +19,10 @@ BraceWrapping:
   AfterEnum: true
   BeforeCatch: false
   BeforeElse: false
-  SplitEmptyFunction: false
+  SplitEmptyFunction: true
 AlignAfterOpenBracket: Align
 AllowShortFunctionsOnASingleLine: Inline
 AllowShortIfStatementsOnASingleLine: false
-PointerAlignment: Left
+PointerAlignment: Right
 SortIncludes: false
+Cpp11BracedListStyle: true

@@ -12,28 +12,29 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      # Pinned on purpose: formatting rules change between clang-format majors,
+      # and an unpinned bump would reformat unrelated lines. Local development
+      # uses the same major (18).
       - name: Install clang-format
-        run: sudo apt-get update && sudo apt-get install -y clang-format
-      - name: Determine changed files
-        id: changed
+        run: sudo apt-get update && sudo apt-get install -y clang-format-18
+      # Only the lines this change touches are checked. The fork keeps upstream
+      # KDE formatting, which is not clang-format clean as a whole; a
+      # whole-file check would reformat upstream code and make manual pulls of
+      # upstream security fixes painful.
+      - name: Check formatting (changed lines)
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            base="origin/${{ github.base_ref }}"
             git fetch origin "${{ github.base_ref }}" --depth=1 || true
-            range="$base...HEAD"
+            base="origin/${{ github.base_ref }}"
           else
-            range="${{ github.event.before }}...HEAD"
+            base="${{ github.event.before }}"
+            # A branch created by this push reports an all-zero "before".
+            case "$base" in
+              0000000000000000000000000000000000000000) base="HEAD~1" ;;
+            esac
           fi
-          files=$(git diff --name-only $range -- '*.cpp' '*.cc' '*.h' '*.hpp' 2>/dev/null || true)
-          {
-            echo "files<<EOF"
-            echo "$files"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-      - name: Check formatting (changed files)
-        run: |
-          files="${{ steps.changed.outputs.files }}"
-          if [ -n "$files" ]; then clang-format --dry-run --Werror $files; fi
+          git-clang-format-18 --binary clang-format-18 --diff "$base" HEAD -- \
+            '*.cpp' '*.cc' '*.h' '*.hpp'
 
   # NOTE(bootstrap): the Qt6 + KF6 build is being brought off Craft on Windows
   # (risk R-1). Until the toolchain recipe is proven, this job is a best-effort

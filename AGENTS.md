@@ -19,7 +19,11 @@ cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=C:\CraftRoot -DCMAKE_BUILD_TYPE
 cmake --build build
 ctest --test-dir build
 ```
-Binaries land in `build/bin`. Format: `clang-format`. Static analysis: `clang-tidy`, `cppcheck`.
+Binaries land in `build/bin`. Format: `clang-format` 18 — only the lines a
+change touches are enforced (`git clang-format <base>`; the CI job does the
+same). The fork keeps upstream KDE formatting, which is not clang-format clean
+as a whole, so never reformat a file you are only touching in one place.
+Static analysis: `clang-tidy`, `cppcheck`.
 
 ## Continuity
 See `twinelink-docs/docs/plan/session-log.md`.
